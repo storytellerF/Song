@@ -22,7 +22,7 @@ tasks.test {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "16"
+    kotlinOptions.jvmTarget = "11"
 }
 
 application {
@@ -33,7 +33,7 @@ val userHome: String = System.getProperty("user.home")
 val file = "$userHome/AndroidStudioProjects/common-ui-list-structure/giant-explorer/yue/app/build/outputs/apk/debug/app-debug.apk"
 
 song {
-    this.apkFile.set(file)
+    this.transfers.set(listOf(file))
     this.adb.set("$userHome/Library/Android/sdk/platform-tools/adb")
     this.paths.set(listOf())
     this.packages.set(listOf("com.storyteller_f.giant_explorer" to "files/plugins"))

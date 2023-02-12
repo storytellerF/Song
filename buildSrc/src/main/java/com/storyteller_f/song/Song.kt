@@ -7,7 +7,7 @@ import org.gradle.api.provider.Property
 import java.io.File
 
 interface SongExtension {
-    val apkFile: Property<String>
+    val transfers: ListProperty<String>
     val adb: Property<String>
     val paths: ListProperty<String>
     val packages: ListProperty<Pair<String, String>>
@@ -19,10 +19,10 @@ class Song : Plugin<Project> {
         val songExtension = target.extensions.create("song", SongExtension::class.java)
 
         val dispatchApk = target.tasks.register("dispatchApk", SongDispatcher::class.java) {
-            it.apkFile = File(songExtension.apkFile.get())
+            it.transferFiles = songExtension.transfers.get().map { File(it) }
             it.adbPath = songExtension.adb.get()
-            it.paths = songExtension.paths.get()
-            it.packages = songExtension.packages.get()
+            it.pathTargets = songExtension.paths.get()
+            it.packageTargets = songExtension.packages.get()
             it.outputName = songExtension.outputName.get()
         }
         target.afterEvaluate {
