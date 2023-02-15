@@ -3,6 +3,7 @@ package com.storyteller_f.song
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 
@@ -10,7 +11,7 @@ internal open class SongDispatcher : DefaultTask() {
     /**
      * 想要传送的文件
      */
-    @InputFile
+    @InputFiles
     lateinit var transferFiles: List<File>
 
     /**

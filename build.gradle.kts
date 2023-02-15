@@ -33,9 +33,9 @@ val userHome: String = System.getProperty("user.home")
 val file = "$userHome/AndroidStudioProjects/common-ui-list-structure/giant-explorer/yue/app/build/outputs/apk/debug/app-debug.apk"
 
 song {
-    this.transfers.set(listOf(file))
-    this.adb.set("$userHome/Library/Android/sdk/platform-tools/adb")
-    this.paths.set(listOf())
-    this.packages.set(listOf("com.storyteller_f.giant_explorer" to "files/plugins"))
-    this.outputName.set("yue.apk")
+    transfers.set(listOf(file))
+    adb.set("$userHome/Library/Android/sdk/platform-tools/adb")
+    paths.set(listOf())
+    packages.set(listOf("com.storyteller_f.giant_explorer" to "files/plugins"))
+    outputName.set("yue.apk")
 }

@@ -29,7 +29,7 @@ publishing {
     repositories {
         maven {
             // $rootDir 表示你项目的根目录
-            setUrl("$rootDir/repo-snapshot")
+            setUrl("$rootDir/repo")
         }
     }
 }
@@ -45,4 +45,12 @@ dependencies {
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
+}
+
+kotlin {
+    sourceSets {
+        main {
+            kotlin.srcDir("../buildSrc/src/main/java")
+        }
+    }
 }

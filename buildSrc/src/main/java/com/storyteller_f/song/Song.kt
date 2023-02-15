@@ -29,9 +29,6 @@ class Song : Plugin<Project> {
             val taskName = "packageDebug"
             it.tasks.findByName(taskName)?.let { packageDebug ->
                 dispatchApk.get().dependsOn(taskName)
-                dispatchApk.get().onlyIf {
-                    packageDebug.state.didWork == true
-                }
                 packageDebug.finalizedBy(dispatchApk)
             }
 
