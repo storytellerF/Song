@@ -18,20 +18,15 @@ class Song : Plugin<Project> {
     override fun apply(target: Project) {
         val songExtension = target.extensions.create("song", SongExtension::class.java)
 
-        val dispatchApk = target.tasks.register("dispatchApk", SongDispatcher::class.java) {
+        target.tasks.register(taskName, SongDispatcher::class.java) {
             it.transferFiles = songExtension.transfers.get().map { File(it) }
             it.adbPath = songExtension.adb.get()
             it.pathTargets = songExtension.paths.get()
             it.packageTargets = songExtension.packages.get()
             it.outputName = songExtension.outputName.get()
         }
-        target.afterEvaluate {
-            val taskName = "packageDebug"
-            it.tasks.findByName(taskName)?.let { packageDebug ->
-                dispatchApk.get().dependsOn(taskName)
-                packageDebug.finalizedBy(dispatchApk)
-            }
-
-        }
+    }
+    companion object {
+        const val taskName = "song"
     }
 }
