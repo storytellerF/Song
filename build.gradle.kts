@@ -30,7 +30,7 @@ application {
 }
 
 val userHome: String = System.getProperty("user.home")
-val file = "$userHome/AndroidStudioProjects/common-ui-list-structure/giant-explorer/yue/app/build/outputs/apk/debug/app-debug.apk"
+val file = "$userHome/AndroidStudioProjects/common-ui-list-structure/giant-explorer/yue/app/build/intermediates/apk/debug/app-debug.apk"
 
 song {
     transfers.set(listOf(file))
