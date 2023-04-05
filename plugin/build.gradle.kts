@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     kotlin("jvm") version "1.7.21"
     id("java-gradle-plugin")
@@ -10,6 +12,16 @@ version = "1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     google()
+}
+
+val javaVersion = JavaVersion.VERSION_11
+java {
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions.jvmTarget = javaVersion.toString()
 }
 
 gradlePlugin {
