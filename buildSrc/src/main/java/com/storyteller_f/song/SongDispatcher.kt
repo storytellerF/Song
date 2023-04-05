@@ -2,7 +2,6 @@ package com.storyteller_f.song
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.TaskAction
 import java.io.File
@@ -41,7 +40,7 @@ internal open class SongDispatcher : DefaultTask() {
     @TaskAction
     fun dispatch() {
         logger.warn("dispatch start")
-        extracted(transferFiles, packageTargets, pathTargets, adbPath, outputName)
+        dispatch(transferFiles, packageTargets, pathTargets, adbPath, outputName)
     }
 
 }

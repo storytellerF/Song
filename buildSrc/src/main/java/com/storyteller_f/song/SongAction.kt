@@ -3,13 +3,17 @@ package com.storyteller_f.song
 import java.io.File
 import java.util.regex.Pattern
 
-fun extracted(
+fun dispatch(
     transferFiles: List<File>,
     packageTargets: List<Pair<String, String>>,
     pathTargets: List<String>,
     adbPath: String,
     outputName: String
 ) {
+    if (!File(adbPath).exists()) {
+        println("adbPath $adbPath not exists. Skip!")
+        return
+    }
     val tmp = "/data/local/tmp/${outputName}"
     val devices = getDevices(adbPath)
     transferFiles.forEach {
