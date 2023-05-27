@@ -28,7 +28,7 @@ gradlePlugin {
     plugins {
         // 声明插件信息，这里的 hello 名字随意
         register("song") {
-            version = "0.0.1"
+            version = "1.3"
             // 插件ID
             id = "com.storyteller_f.song"
             // 插件的实现类

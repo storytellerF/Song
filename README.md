@@ -2,6 +2,8 @@
 
 嵩。通过adb 分发文件到手机。
 
+[![](https://jitpack.io/v/storytellerF/song.svg)](https://jitpack.io/#storytellerF/song)
+
 ```kotlin
 song {
     //optional。默认是adb，也就是说需要添加到path。否则需要指定
