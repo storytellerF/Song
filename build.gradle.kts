@@ -23,9 +23,13 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
-
+val javaVersion = JavaVersion.VERSION_16
+java {
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+}
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "16"
+    kotlinOptions.jvmTarget = javaVersion.toString()
 }
 
 application {

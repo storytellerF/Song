@@ -15,10 +15,10 @@ repositories {
 }
 
 val javaVersion = JavaVersion.VERSION_16
-//java {
-//    sourceCompatibility = javaVersion
-//    targetCompatibility = javaVersion
-//}
+java {
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+}
 
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions.jvmTarget = javaVersion.toString()

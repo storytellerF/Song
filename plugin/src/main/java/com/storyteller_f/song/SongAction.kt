@@ -28,7 +28,7 @@ class SongAction(
             devices.forEach { deviceSerial ->
                 logger.info("dispatch to $deviceSerial")
                 pathTargets.forEach { pathTarget ->
-                    logger.info("\tdispatch to path: $pathTarget")
+                    logger.info("\tdispatch to [pathTarget]: $pathTarget")
                     command(pushSimple(deviceSerial, src, pathTarget), "push to regular path")
                 }
                 pushToInternal(deviceSerial, src, tmp)
@@ -39,9 +39,9 @@ class SongAction(
 
     private fun pushToInternal(deviceSerial: String, src: String, tmp: String) {
         command(pushSimple(deviceSerial, src, tmp), "push to temp")
-        packageTargets.forEach { (packageTarget, sp) ->
-            val outputPath = "/data/data/$packageTarget/$sp"
-            logger.info("\tdispatch to pk: $outputPath")
+        packageTargets.forEach { (packageTarget, subPath) ->
+            val outputPath = "/data/data/$packageTarget/$subPath"
+            logger.info("\tdispatch to [packageTarget]: $outputPath")
             val output = "$outputPath/${outputName}"
             command(
                 mkdirsInInternal(deviceSerial, packageTarget, outputPath),
@@ -86,37 +86,33 @@ class SongAction(
         packageTarget: String,
         tmp: String,
         output: String
-    ): Array<String> {
-        return arrayOf(
-            adbPath,
-            "-s",
-            deviceSerial,
-            "shell",
-            "run-as",
-            packageTarget,
-            "sh",
-            "-c",
-            "\'/bin/cp -f $tmp $output\'"
-        )
-    }
+    ) = arrayOf(
+        adbPath,
+        "-s",
+        deviceSerial,
+        "shell",
+        "run-as",
+        packageTarget,
+        "sh",
+        "-c",
+        "\'/bin/cp -f $tmp $output\'"
+    )
 
     private fun mkdirsInInternal(
         deviceSerial: String,
         packageTarget: String,
         outputPath: String,
-    ): Array<String> {
-        return arrayOf(
-            adbPath,
-            "-s",
-            deviceSerial,
-            "shell",
-            "run-as",
-            packageTarget,
-            "sh",
-            "-c",
-            "\'mkdir -p $outputPath\'"
-        )
-    }
+    ) = arrayOf(
+        adbPath,
+        "-s",
+        deviceSerial,
+        "shell",
+        "run-as",
+        packageTarget,
+        "sh",
+        "-c",
+        "\'mkdir -p $outputPath\'"
+    )
 
     private fun command(arrayOf: Array<String>, label: String): Int {
         val pushCommand = Runtime.getRuntime().exec(arrayOf)
