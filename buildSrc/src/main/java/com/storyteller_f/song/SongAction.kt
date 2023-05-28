@@ -1,107 +1,128 @@
 package com.storyteller_f.song
 
+import org.gradle.api.logging.Logger
 import java.io.File
 import java.util.regex.Pattern
 
-fun dispatch(
-    transferFiles: List<File>,
-    packageTargets: List<Pair<String, String>>,
-    pathTargets: List<String>,
-    adbPath: String,
-    outputName: String
+class SongAction(
+    private val transferFiles: List<File>,
+    private val packageTargets: List<Pair<String, String>>,
+    private val pathTargets: List<String>,
+    private val adbPath: String,
+    private val outputName: String,
+    private val logger: Logger
 ) {
-    if (!File(adbPath).exists()) {
-        println("adbPath $adbPath not exists. Skip!")
-        return
-    }
-    val tmp = "/data/local/tmp/${outputName}"
-    val devices = getDevices(adbPath)
-    transferFiles.forEach {
-        val src = it.absolutePath
-        if (!File(src).exists()) {
-            println("$src not exists")
-            return@forEach
+    fun dispatchToMultiDevices() {
+        if (!File(adbPath).exists()) {
+            logger.warn("adbPath $adbPath not exists. Skip!")
+            return
         }
-        devices.forEach { deviceSerial ->
-            println("dispatch to $deviceSerial")
-            pathTargets.forEach {
-                println("dispatch to path: $it")
-                command(arrayOf(adbPath, "-s", deviceSerial, "push", src, it))
+        val tmp = "/data/local/tmp/${outputName}"
+        val devices = getDevices()
+        transferFiles.forEach {
+            val src = it.absolutePath
+            if (!File(src).exists()) {
+                logger.warn("$src not exists")
+                return@forEach
             }
-            command(arrayOf(adbPath, "-s", deviceSerial, "push", src, tmp))
-            packageTargets.forEach { (pn, sp) ->
-                val outputPath = "/data/data/$pn/$sp"
-                println("dispatch to pk: $outputPath")
-                val output = "$outputPath/${outputName}"
-                command(createOutputCommand(deviceSerial, pn, outputPath, adbPath))
-                command(createCopyCommand(adbPath, deviceSerial, pn, tmp, output))
+            devices.forEach { deviceSerial ->
+                logger.info("dispatch to $deviceSerial")
+                pathTargets.forEach { pathTarget ->
+                    logger.info("\tdispatch to [pathTarget]: $pathTarget")
+                    command(pushSimple(deviceSerial, src, pathTarget), "push to regular path")
+                }
+                pushToInternal(deviceSerial, src, tmp)
             }
-            command(arrayOf(adbPath, "-s", deviceSerial, "shell", "sh", "-c", "\'rm $tmp\'"))
         }
+
     }
 
-}
-
-private fun getDevices(adbPath: String): List<String> {
-    val getDevicesCommand = Runtime.getRuntime().exec(arrayOf(adbPath, "devices"))
-    getDevicesCommand.waitFor()
-    val readText = getDevicesCommand.inputStream.bufferedReader().use {
-        it.readText().trim()
+    private fun pushToInternal(deviceSerial: String, src: String, tmp: String) {
+        command(pushSimple(deviceSerial, src, tmp), "push to temp")
+        packageTargets.forEach { (packageTarget, subPath) ->
+            val outputPath = "/data/data/$packageTarget/$subPath"
+            logger.info("\tdispatch to [packageTarget]: $outputPath")
+            val output = "$outputPath/${outputName}"
+            command(
+                mkdirsInInternal(deviceSerial, packageTarget, outputPath),
+                "mkdirs app internal package"
+            )
+            command(
+                pushToInternal(deviceSerial, packageTarget, tmp, output),
+                "push to app internal package"
+            )
+        }
+        command(removeTemp(deviceSerial, tmp), "remove temp")
     }
-    getDevicesCommand.destroy()
-    val devices = readText.split("\n").let {
-        it.subList(1, it.size)
-    }.map {
-        it.split(Pattern.compile("\\s+")).first()
-    }
-    return devices
-}
 
-private fun createCopyCommand(
-    adbPath: String,
-    deviceSerial: String,
-    pn: String,
-    tmp: String,
-    output: String
-): Array<String> {
-    return arrayOf(
+    private fun pushSimple(
+        deviceSerial: String,
+        src: String,
+        path: String
+    ) = arrayOf(adbPath, "-s", deviceSerial, "push", src, path)
+
+    private fun removeTemp(
+        deviceSerial: String,
+        tmp: String
+    ) = arrayOf(adbPath, "-s", deviceSerial, "shell", "sh", "-c", "\'rm $tmp\'")
+
+    private fun getDevices(): List<String> {
+        val getDevicesCommand = Runtime.getRuntime().exec(arrayOf(adbPath, "devices"))
+        getDevicesCommand.waitFor()
+        val readText = getDevicesCommand.inputStream.bufferedReader().use {
+            it.readText().trim()
+        }
+        getDevicesCommand.destroy()
+        val devices = readText.split("\n").let {
+            it.subList(1, it.size)
+        }.map {
+            it.split(Pattern.compile("\\s+")).first()
+        }
+        return devices
+    }
+
+    private fun pushToInternal(
+        deviceSerial: String,
+        packageTarget: String,
+        tmp: String,
+        output: String
+    ) = arrayOf(
         adbPath,
         "-s",
         deviceSerial,
         "shell",
         "run-as",
-        pn,
+        packageTarget,
         "sh",
         "-c",
         "\'/bin/cp -f $tmp $output\'"
     )
-}
 
-private fun createOutputCommand(
-    deviceSerial: String,
-    pn: String,
-    outputPath: String,
-    adbPath: String
-): Array<String> {
-    return arrayOf(
+    private fun mkdirsInInternal(
+        deviceSerial: String,
+        packageTarget: String,
+        outputPath: String,
+    ) = arrayOf(
         adbPath,
         "-s",
         deviceSerial,
         "shell",
         "run-as",
-        pn,
+        packageTarget,
         "sh",
         "-c",
         "\'mkdir -p $outputPath\'"
     )
+
+    private fun command(arrayOf: Array<String>, label: String): Int {
+        val pushCommand = Runtime.getRuntime().exec(arrayOf)
+        val waitFor = pushCommand.waitFor()
+        val readText = pushCommand.inputStream.reader().readText()
+        val error = pushCommand.errorStream.reader().readText()
+        if (waitFor != 0)
+            logger.warn("$label command result: $waitFor input: $readText error: $error")
+        pushCommand.destroy()
+        return waitFor
+    }
 }
 
-private fun command(arrayOf: Array<String>): Int {
-    val pushCommand = Runtime.getRuntime().exec(arrayOf)
-    val waitFor = pushCommand.waitFor()
-    val readText = pushCommand.inputStream.reader().readText()
-    val error = pushCommand.errorStream.reader().readText()
-    println("$waitFor:$readText|$error")
-    pushCommand.destroy()
-    return waitFor
-}

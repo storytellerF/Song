@@ -18,7 +18,8 @@ class Song : Plugin<Project> {
     override fun apply(target: Project) {
         val songExtension = target.extensions.create("song", SongExtension::class.java)
 
-        target.tasks.register(taskName, SongDispatcher::class.java) {
+        target.tasks.register(taskName, SongDispatcher::class.java) { it ->
+            it.group = "distribution"
             it.transferFiles = songExtension.transfers.get().map { File(it) }
             it.adbPath = songExtension.adb.get()
             it.pathTargets = songExtension.paths.get()

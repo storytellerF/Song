@@ -39,8 +39,9 @@ internal open class SongDispatcher : DefaultTask() {
 
     @TaskAction
     fun dispatch() {
-        logger.warn("dispatch start")
-        dispatch(transferFiles, packageTargets, pathTargets, adbPath, outputName)
+        logger.info("dispatch start")
+        SongAction(transferFiles, packageTargets, pathTargets, adbPath, outputName, logger).dispatchToMultiDevices()
+        logger.info("dispatch end")
     }
 
 }

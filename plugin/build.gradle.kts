@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.storyteller_f.song"
-version = "1.0-SNAPSHOT"
+version = "1.3"
 
 repositories {
     mavenCentral()
@@ -28,7 +28,6 @@ gradlePlugin {
     plugins {
         // 声明插件信息，这里的 hello 名字随意
         register("song") {
-            version = "1.3"
             // 插件ID
             id = "com.storyteller_f.song"
             // 插件的实现类
