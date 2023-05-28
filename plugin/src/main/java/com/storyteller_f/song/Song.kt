@@ -19,11 +19,12 @@ class Song : Plugin<Project> {
         val songExtension = target.extensions.create("song", SongExtension::class.java)
 
         target.tasks.register(taskName, SongDispatcher::class.java) {
-            it.transferFiles = songExtension.transfers.get().map { File(it) }
-            it.adbPath = songExtension.adb.get()
-            it.pathTargets = songExtension.paths.get()
-            it.packageTargets = songExtension.packages.get()
-            it.outputName = songExtension.outputName.get()
+            group = "distribution"
+            transferFiles = songExtension.transfers.get().map { File(it) }
+            adbPath = songExtension.adb.get()
+            pathTargets = songExtension.paths.get()
+            packageTargets = songExtension.packages.get()
+            outputName = songExtension.outputName.get()
         }
     }
     companion object {

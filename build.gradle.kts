@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.21"
+    kotlin("jvm") version "1.8.21"
     id("com.storyteller_f.song")
     application
 }
@@ -10,7 +10,10 @@ group = "com.storyteller_f.song"
 version = "1.0-SNAPSHOT"
 
 repositories {
+    gradlePluginPortal()
+    google()
     mavenCentral()
+    maven { setUrl("./repo-snapshot") }
 }
 
 dependencies {
@@ -22,7 +25,7 @@ tasks.test {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "16"
 }
 
 application {
