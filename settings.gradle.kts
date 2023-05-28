@@ -1,12 +1,13 @@
-//pluginManagement {
-//    repositories {
-//        gradlePluginPortal()
-//        google()
-//        mavenCentral()
-//        maven { setUrl("./repo-snapshot") }
-//    }
-//}
+pluginManagement {
+    includeBuild("plugin")
+
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+        maven { setUrl("./repo-snapshot") }
+    }
+}
 
 
 rootProject.name = "song"
-include("plugin")
