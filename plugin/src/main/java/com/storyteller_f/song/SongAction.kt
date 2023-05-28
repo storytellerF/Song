@@ -1,6 +1,5 @@
 package com.storyteller_f.song
 
-import org.gradle.api.logging.Logger
 import java.io.File
 import java.util.regex.Pattern
 
@@ -10,7 +9,7 @@ class SongAction(
     private val pathTargets: List<String>,
     private val adbPath: String,
     private val outputName: String,
-    private val logger: Logger
+    private val logger: org.slf4j.Logger
 ) {
     fun dispatchToMultiDevices() {
         if (!File(adbPath).exists()) {

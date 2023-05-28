@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.storyteller_f.song"
-version = "1.4"
+version = "2.0"
 
 repositories {
     mavenCentral()
