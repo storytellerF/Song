@@ -1,4 +1,4 @@
 jdk:
-  - openjdk16
+  - openjdk11
 install:
-  - ./gradlew ./gradlew clean -xtest assemble plugin:publishToMavenLocal
+  - ./gradlew clean -xtest assemble plugin:publishToMavenLocal

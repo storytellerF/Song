@@ -14,14 +14,16 @@ repositories {
     google()
 }
 
-val javaVersion = JavaVersion.VERSION_16
+val javaVersion = JavaVersion.VERSION_11
 java {
     sourceCompatibility = javaVersion
     targetCompatibility = javaVersion
 }
 
 tasks.withType<KotlinCompile>().configureEach {
-    kotlinOptions.jvmTarget = javaVersion.toString()
+    kotlinOptions {
+        jvmTarget = javaVersion.toString()
+    }
 }
 
 gradlePlugin {
