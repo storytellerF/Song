@@ -18,7 +18,7 @@ class Song : Plugin<Project> {
     override fun apply(target: Project) {
         val songExtension = target.extensions.create("song", SongExtension::class.java)
 
-        target.tasks.register(taskName, SongDispatcher::class.java) {
+        target.tasks.register(TASKNAME, SongDispatcher::class.java) {
             group = "distribution"
             transferFiles = songExtension.transfers.get().map { File(it) }
             adbPath = songExtension.adb.get()
@@ -28,6 +28,6 @@ class Song : Plugin<Project> {
         }
     }
     companion object {
-        const val taskName = "song"
+        const val TASKNAME = "song"
     }
 }

@@ -44,3 +44,4 @@ bin/
 /repo
 /repo-snapshot
 /plugin/repo
+.idea
