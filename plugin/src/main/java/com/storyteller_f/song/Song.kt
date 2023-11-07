@@ -10,7 +10,7 @@ interface SongExtension {
     val transfers: ListProperty<String>
     val adb: Property<String>
     val paths: ListProperty<String>
-    val packages: ListProperty<Pair<String, String>>
+    val packages: ListProperty<PackageSite>
     val outputName: Property<String>
 }
 

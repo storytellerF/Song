@@ -50,6 +50,9 @@ publishing {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-nop
+    testImplementation("org.slf4j:slf4j-nop:2.0.9")
 }
 
 tasks.getByName<Test>("test") {

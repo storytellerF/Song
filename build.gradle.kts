@@ -1,3 +1,4 @@
+import com.storyteller_f.song.PackageSite
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -43,6 +44,6 @@ song {
     transfers.set(listOf(file))
     adb.set("$userHome/Library/Android/sdk/platform-tools/adb")
     paths.set(listOf())
-    packages.set(listOf("com.storyteller_f.giant_explorer" to "files/plugins"))
+    packages.set(listOf(PackageSite("com.storyteller_f.giant_explorer", "files/plugins")))
     outputName.set("yue.apk")
 }

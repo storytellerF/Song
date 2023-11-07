@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 pluginManagement {
     includeBuild("plugin")
 
@@ -10,4 +12,4 @@ pluginManagement {
 }
 
 
-rootProject.name = "song"
+rootProject.name = "Song"

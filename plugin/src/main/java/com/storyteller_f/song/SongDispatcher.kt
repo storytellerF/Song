@@ -29,7 +29,7 @@ internal open class SongDispatcher : DefaultTask() {
      * /data/data/package-name/目录。这类目录无法直接通过push 传递。
      */
     @Input
-    lateinit var packageTargets: List<Pair<String, String>>
+    lateinit var packageTargets: List<PackageSite>
 
     /**
      * /data/local/tmp 中的临时目录。
@@ -39,9 +39,16 @@ internal open class SongDispatcher : DefaultTask() {
 
     @TaskAction
     fun dispatch() {
-        logger.info("dispatch start")
-        SongAction(transferFiles, packageTargets, pathTargets, adbPath, outputName, logger).dispatchToMultiDevices()
-        logger.info("dispatch end")
+        logger.info("Dispatch start")
+        SongAction(
+            transferFiles,
+            packageTargets,
+            pathTargets,
+            adbPath,
+            outputName,
+            logger
+        ).dispatchToMultiDevices()
+        logger.info("Dispatch end")
     }
 
 }

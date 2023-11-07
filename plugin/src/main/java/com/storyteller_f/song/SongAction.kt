@@ -1,15 +1,27 @@
 package com.storyteller_f.song
 
+import org.slf4j.Logger
+import org.slf4j.helpers.NOPLogger
 import java.io.File
 import java.util.regex.Pattern
 
+private const val PROCESS_OK = 0
+
+/**
+ * @param path 相对路径
+ */
+data class PackageSite(val packageName: String, val path: String)
+
+/**
+ * @param pathTargets 绝对路径
+ */
 class SongAction(
-    private val transferFiles: List<File>,
-    private val packageTargets: List<Pair<String, String>>,
-    private val pathTargets: List<String>,
-    private val adbPath: String,
-    private val outputName: String,
-    private val logger: org.slf4j.Logger
+    private val transferFiles: List<File> = listOf(),
+    private val packageTargets: List<PackageSite> = listOf(),
+    private val pathTargets: List<String> = listOf(),
+    private val adbPath: String = "adb",
+    private val outputName: String = "temp.file",
+    private val logger: Logger = NOPLogger.NOP_LOGGER
 ) {
     fun dispatchToMultiDevices() {
         if (!File(adbPath).exists()) {
@@ -18,52 +30,82 @@ class SongAction(
         }
         val tmp = "/data/local/tmp/${outputName}"
         val devices = getDevices()
-        transferFiles.forEach {
-            val src = it.absolutePath
-            if (!File(src).exists()) {
+        transferFiles.filter { src ->
+            if (src.exists()) true
+            else {
                 logger.warn("$src not exists")
-                return@forEach
+                false
             }
-            devices.forEach { deviceSerial ->
-                logger.info("dispatch to $deviceSerial")
+        }.forEach {
+            val src = it.absolutePath
+            devices.forEach { deviceSerialName ->
+                logger.info("Dispatch to $deviceSerialName")
                 pathTargets.forEach { pathTarget ->
-                    logger.info("\tdispatch to [pathTarget]: $pathTarget")
-                    command(pushSimple(deviceSerial, src, pathTarget), "push to regular path")
+                    logger.info("\tDispatch to [pathTarget]: $pathTarget")
+                    command("Push to regular path", pushSimple(deviceSerialName, src, pathTarget))
                 }
-                pushToInternal(deviceSerial, src, tmp)
+                pushToInternal(deviceSerialName, src, tmp)
             }
         }
 
     }
 
-    private fun pushToInternal(deviceSerial: String, src: String, tmp: String) {
-        command(pushSimple(deviceSerial, src, tmp), "push to temp")
-        packageTargets.forEach { (packageTarget, subPath) ->
-            val outputPath = "/data/data/$packageTarget/$subPath"
-            logger.info("\tdispatch to [packageTarget]: $outputPath")
-            val output = "$outputPath/${outputName}"
-            command(
-                mkdirsInInternal(deviceSerial, packageTarget, outputPath),
-                "mkdirs app internal package"
-            )
-            command(
-                pushToInternal(deviceSerial, packageTarget, tmp, output),
-                "push to app internal package"
-            )
+    private fun pushToInternal(deviceSerialName: String, src: String, tmp: String) {
+        if (command("Push to temp", pushSimple(deviceSerialName, src, tmp)) != PROCESS_OK) {
+            return
         }
-        command(removeTemp(deviceSerial, tmp), "remove temp")
+        packageTargets.forEach { (packageName, subPath) ->
+            val outputPath = "/data/data/$packageName/$subPath"
+            logger.info("\tDispatch to [packageTarget]: $outputPath")
+            val output = "$outputPath/${outputName}"
+
+            sequence {
+                yield(
+                    command(
+                        "Mkdirs app internal package",
+                        mkdirsInInternal(deviceSerialName, packageName, outputPath)
+                    )
+                )
+                yield(
+                    command(
+                        "Push to app internal package",
+                        pushToInternal(deviceSerialName, packageName, tmp, output)
+                    )
+                )
+            }.any {
+                //有任何一个返回了非零的结果，都会退出
+                it != PROCESS_OK
+            }
+
+        }
+        command("Remove temp", removeTemp(deviceSerialName, tmp))
     }
 
     private fun pushSimple(
-        deviceSerial: String,
+        deviceSerialName: String,
         src: String,
         path: String
-    ) = arrayOf(adbPath, "-s", deviceSerial, "push", src, path)
+    ) = arrayOf(
+        adbPath,
+        "-s",
+        deviceSerialName,
+        "push",
+        src,
+        path
+    )
 
     private fun removeTemp(
         deviceSerial: String,
         tmp: String
-    ) = arrayOf(adbPath, "-s", deviceSerial, "shell", "sh", "-c", "\'rm $tmp\'")
+    ) = arrayOf(
+        adbPath,
+        "-s",
+        deviceSerial,
+        "shell",
+        "sh",
+        "-c",
+        "\'rm $tmp\'"
+    )
 
     private fun getDevices(): List<String> {
         val getDevicesCommand = Runtime.getRuntime().exec(arrayOf(adbPath, "devices"))
@@ -113,15 +155,18 @@ class SongAction(
         "\'mkdir -p $outputPath\'"
     )
 
-    private fun command(arrayOf: Array<String>, label: String): Int {
+    /**
+     * @return 返回命令结果
+     */
+    private fun command(label: String, arrayOf: Array<String>): Int {
         val pushCommand = Runtime.getRuntime().exec(arrayOf)
-        val waitFor = pushCommand.waitFor()
+        val processResult = pushCommand.waitFor()
         val readText = pushCommand.inputStream.reader().readText()
         val error = pushCommand.errorStream.reader().readText()
-        if (waitFor != 0)
-            logger.warn("$label command result: $waitFor input: $readText error: $error")
+        if (processResult != PROCESS_OK)
+            logger.warn("$label command result: $processResult input: $readText error: $error")
         pushCommand.destroy()
-        return waitFor
+        return processResult
     }
 }
 
