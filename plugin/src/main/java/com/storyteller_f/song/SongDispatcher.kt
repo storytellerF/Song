@@ -11,41 +11,41 @@ internal open class SongDispatcher : DefaultTask() {
      * 想要传送的文件
      */
     @InputFiles
-    lateinit var transferFiles: List<File>
+    var transferFiles: List<File>? = null
 
     /**
      * adb 路径
      */
     @Input
-    lateinit var adbPath: String
+    var adbPath: String? = null
 
     /**
      * 普通目录
      */
     @Input
-    lateinit var pathTargets: List<String>
+    var pathTargets: List<String>? = null
 
     /**
      * /data/data/package-name/目录。这类目录无法直接通过push 传递。
      */
     @Input
-    lateinit var packageTargets: List<PackageSite>
+    var packageTargets: List<PackageSite>? = null
 
     /**
      * /data/local/tmp 中的临时目录。
      */
     @Input
-    lateinit var outputName: String
+    var outputName: String? = null
 
     @TaskAction
     fun dispatch() {
         logger.info("Dispatch start")
         SongAction(
-            transferFiles,
-            packageTargets,
-            pathTargets,
             adbPath,
             outputName,
+            transferFiles.orEmpty(),
+            packageTargets.orEmpty(),
+            pathTargets.orEmpty(),
             logger
         ).dispatchToMultiDevices()
         logger.info("Dispatch end")

@@ -16,19 +16,32 @@ data class PackageSite(val packageName: String, val path: String)
  * @param pathTargets 绝对路径
  */
 class SongAction(
+    private val adbPath: String? = null,
+    private val outputName: String? = null,
     private val transferFiles: List<File> = listOf(),
     private val packageTargets: List<PackageSite> = listOf(),
     private val pathTargets: List<String> = listOf(),
-    private val adbPath: String = "adb",
-    private val outputName: String = "temp.file",
     private val logger: Logger = NOPLogger.NOP_LOGGER
 ) {
+    private val adb = when {
+        adbPath == null || adbPath == "adb" -> "adb"
+        File(adbPath).exists() -> adbPath
+        else -> {
+            val androidHome: String? = System.getenv("ANDROID_HOME")
+            if (androidHome.isNullOrEmpty()) {
+                null
+            } else {
+                val isWindows = System.getProperty("os.name")?.startsWith("win") == true
+                File(androidHome, "platform-tools/adb${if (isWindows) ".exe" else ""}").absolutePath
+            }
+        }
+    }
     fun dispatchToMultiDevices() {
-        if (!File(adbPath).exists()) {
+        if (adb == null) {
             logger.warn("adbPath $adbPath not exists. Skip!")
             return
         }
-        val tmp = "/data/local/tmp/${outputName}"
+
         val devices = getDevices()
         transferFiles.filter { src ->
             if (src.exists()) true
@@ -38,19 +51,21 @@ class SongAction(
             }
         }.forEach {
             val src = it.absolutePath
+            val name = outputName ?: it.name
             devices.forEach { deviceSerialName ->
                 logger.info("Dispatch to $deviceSerialName")
                 pathTargets.forEach { pathTarget ->
                     logger.info("\tDispatch to [pathTarget]: $pathTarget")
                     command("Push to regular path", pushSimple(deviceSerialName, src, pathTarget))
                 }
-                pushToInternal(deviceSerialName, src, tmp)
+                pushToInternal(deviceSerialName, src, name)
             }
         }
 
     }
 
-    private fun pushToInternal(deviceSerialName: String, src: String, tmp: String) {
+    private fun pushToInternal(deviceSerialName: String, src: String, name: String) {
+        val tmp = "/data/local/tmp/${name}"
         if (command("Push to temp", pushSimple(deviceSerialName, src, tmp)) != PROCESS_OK) {
             return
         }
@@ -69,7 +84,7 @@ class SongAction(
                 yield(
                     command(
                         "Push to app internal package",
-                        pushToInternal(deviceSerialName, packageName, tmp, output)
+                        copyToInternal(deviceSerialName, packageName, tmp, output)
                     )
                 )
             }.any {
@@ -86,7 +101,7 @@ class SongAction(
         src: String,
         path: String
     ) = arrayOf(
-        adbPath,
+        adb!!,
         "-s",
         deviceSerialName,
         "push",
@@ -98,7 +113,7 @@ class SongAction(
         deviceSerial: String,
         tmp: String
     ) = arrayOf(
-        adbPath,
+        adb!!,
         "-s",
         deviceSerial,
         "shell",
@@ -108,7 +123,7 @@ class SongAction(
     )
 
     private fun getDevices(): List<String> {
-        val getDevicesCommand = Runtime.getRuntime().exec(arrayOf(adbPath, "devices"))
+        val getDevicesCommand = Runtime.getRuntime().exec(arrayOf(adb, "devices"))
         getDevicesCommand.waitFor()
         val readText = getDevicesCommand.inputStream.bufferedReader().use {
             it.readText().trim()
@@ -122,13 +137,13 @@ class SongAction(
         return devices
     }
 
-    private fun pushToInternal(
+    private fun copyToInternal(
         deviceSerial: String,
         packageTarget: String,
         tmp: String,
         output: String
     ) = arrayOf(
-        adbPath,
+        adb!!,
         "-s",
         deviceSerial,
         "shell",
@@ -144,7 +159,7 @@ class SongAction(
         packageTarget: String,
         outputPath: String,
     ) = arrayOf(
-        adbPath,
+        adb!!,
         "-s",
         deviceSerial,
         "shell",
