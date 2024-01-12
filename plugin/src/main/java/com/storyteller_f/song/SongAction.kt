@@ -13,6 +13,7 @@ private const val PROCESS_OK = 0
 data class PackageSite(val packageName: String, val path: String)
 
 /**
+ * @param adbPath 如果为null 或者空字符串会通过ANDROID_HOME获取adb 的路径
  * @param pathTargets 绝对路径
  */
 class SongAction(
@@ -24,9 +25,8 @@ class SongAction(
     private val logger: Logger = NOPLogger.NOP_LOGGER
 ) {
     private val adb = when {
-        adbPath == null || adbPath == "adb" -> "adb"
-        File(adbPath).exists() -> adbPath
-        else -> {
+        adbPath == "adb" -> "adb"
+        adbPath == null || adbPath == "" -> {
             val androidHome: String? = System.getenv("ANDROID_HOME")
             if (androidHome.isNullOrEmpty()) {
                 null
@@ -35,7 +35,11 @@ class SongAction(
                 File(androidHome, "platform-tools/adb${if (isWindows) ".exe" else ""}").absolutePath
             }
         }
+
+        File(adbPath).exists() -> adbPath
+        else -> throw Exception("invalid adb path $adbPath")
     }
+
     fun dispatchToMultiDevices() {
         if (adb == null) {
             logger.warn("adbPath $adbPath not exists. Skip!")
@@ -56,7 +60,7 @@ class SongAction(
                 logger.info("Dispatch to $deviceSerialName")
                 pathTargets.forEach { pathTarget ->
                     logger.info("\tDispatch to [pathTarget]: $pathTarget")
-                    command("Push to regular path", pushSimple(deviceSerialName, src, pathTarget))
+                    command("Push to regular path", pushSimple(deviceSerialName, src, "$pathTarget/$name"))
                 }
                 pushToInternal(deviceSerialName, src, name)
             }
@@ -73,27 +77,42 @@ class SongAction(
             val outputPath = "/data/data/$packageName/$subPath"
             logger.info("\tDispatch to [packageTarget]: $outputPath")
             val output = "$outputPath/${outputName}"
-
-            sequence {
-                yield(
-                    command(
-                        "Mkdirs app internal package",
-                        mkdirsInInternal(deviceSerialName, packageName, outputPath)
+            if (checkPackageExists(packageName, deviceSerialName)) {
+                sequence {
+                    yield(
+                        command(
+                            "Mkdirs app internal package",
+                            mkdirsInInternal(deviceSerialName, packageName, outputPath)
+                        )
                     )
-                )
-                yield(
-                    command(
-                        "Push to app internal package",
-                        copyToInternal(deviceSerialName, packageName, tmp, output)
+                    yield(
+                        command(
+                            "Push to app internal package",
+                            copyToInternal(deviceSerialName, packageName, tmp, output)
+                        )
                     )
-                )
-            }.any {
-                //有任何一个返回了非零的结果，都会退出
-                it != PROCESS_OK
+                }.any {
+                    //有任何一个返回了非零的结果，都会退出
+                    it != PROCESS_OK
+                }
+            } else {
+                logger.info("$packageName not exists")
             }
+
 
         }
         command("Remove temp", removeTemp(deviceSerialName, tmp))
+    }
+
+    private fun checkPackageExists(packageName: String, deviceSerial: String): Boolean {
+        val result = commandResult(
+            "Check $packageName exists", arrayOf(
+                "/bin/sh",
+                "-c",
+                """adb -s $deviceSerial shell pm list package | grep  "$packageName$""""
+            )
+        )
+        return result.isNotEmpty()
     }
 
     private fun pushSimple(
@@ -123,18 +142,29 @@ class SongAction(
     )
 
     private fun getDevices(): List<String> {
-        val getDevicesCommand = Runtime.getRuntime().exec(arrayOf(adb, "devices"))
-        getDevicesCommand.waitFor()
-        val readText = getDevicesCommand.inputStream.bufferedReader().use {
-            it.readText().trim()
-        }
-        getDevicesCommand.destroy()
+        val readText = commandResult("Get Devices", arrayOf(adb, "devices"))
         val devices = readText.split("\n").let {
             it.subList(1, it.size)
         }.map {
             it.split(Pattern.compile("\\s+")).first()
         }
         return devices
+    }
+
+    private fun commandResult(label: String, commands: Array<String?>): String {
+        val getDevicesCommand = Runtime.getRuntime().exec(commands)
+        val result = getDevicesCommand.waitFor()
+        val inputContent = getDevicesCommand.inputStream.bufferedReader().use {
+            it.readText().trim()
+        }
+        val errorContent = getDevicesCommand.errorStream.bufferedReader().use {
+            it.readText().trim()
+        }
+        if (result != PROCESS_OK) {
+            logger.error("$label command result $result input: $inputContent error: $errorContent")
+        }
+        getDevicesCommand.destroy()
+        return inputContent
     }
 
     private fun copyToInternal(
@@ -171,15 +201,16 @@ class SongAction(
     )
 
     /**
+     * 如果执行失败，会显示命令输出的内容
      * @return 返回命令结果
      */
-    private fun command(label: String, arrayOf: Array<String>): Int {
-        val pushCommand = Runtime.getRuntime().exec(arrayOf)
+    private fun command(label: String, commands: Array<String>): Int {
+        val pushCommand = Runtime.getRuntime().exec(commands)
         val processResult = pushCommand.waitFor()
         val readText = pushCommand.inputStream.reader().readText()
         val error = pushCommand.errorStream.reader().readText()
         if (processResult != PROCESS_OK)
-            logger.warn("$label command result: $processResult input: $readText error: $error")
+            logger.warn("$label command ${commands.joinToString()} result: $processResult input: $readText error: $error")
         pushCommand.destroy()
         return processResult
     }

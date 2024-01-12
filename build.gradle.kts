@@ -38,12 +38,12 @@ application {
 }
 
 val userHome: String = System.getProperty("user.home")
-val file = "$userHome/AndroidStudioProjects/common-ui-list-structure/giant-explorer/yue/app/build/intermediates/apk/debug/app-debug.apk"
+val file = "$userHome/AndroidStudioProjects/GiantExplorer/plugins/yue/app/build/outputs/apk/debug/app-debug.apk"
 
 song {
     transfers.set(listOf(file))
     adb.set("$userHome/Library/Android/sdk/platform-tools/adb")
-    paths.set(listOf())
-    packages.set(listOf(PackageSite("com.storyteller_f.giant_explorer", "files/plugins")))
+    paths.set(listOf("/sdcard/Download/GiantExplorer/plugins"))
+    packages.set(listOf(PackageSite("com.storyteller_f.giant_explorer.debug", "files/plugins")))
     outputName.set("yue.apk")
 }

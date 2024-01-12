@@ -19,7 +19,6 @@ java {
     sourceCompatibility = javaVersion
     targetCompatibility = javaVersion
 }
-
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
         jvmTarget = javaVersion.toString()
