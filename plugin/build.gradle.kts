@@ -7,7 +7,10 @@ plugins {
 }
 
 group = "com.storyteller_f.song"
-version = "2.0"
+version = System.getenv().let {
+    if (it["JITPACK"] == null) "2.1" else it["VERSION"]!!
+}
+
 
 repositories {
     mavenCentral()
@@ -33,15 +36,6 @@ gradlePlugin {
             id = "com.storyteller_f.song"
             // 插件的实现类
             implementationClass = "com.storyteller_f.song.Song"
-        }
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            // $rootDir 表示你项目的根目录
-            setUrl("$rootDir/repo")
         }
     }
 }
