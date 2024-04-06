@@ -4,7 +4,6 @@ import org.slf4j.Logger
 import org.slf4j.helpers.NOPLogger
 import java.io.File
 import java.util.regex.Pattern
-import kotlin.math.log
 
 private const val PROCESS_OK = 0
 
@@ -32,13 +31,17 @@ class SongAction(
             if (androidHome.isNullOrEmpty()) {
                 null
             } else {
-                val isWindows = System.getProperty("os.name")?.startsWith("win") == true
+                val isWindows = isWindows()
                 File(androidHome, "platform-tools/adb${if (isWindows) ".exe" else ""}").absolutePath
             }
         }
 
         File(adbPath).exists() -> adbPath
         else -> throw Exception("invalid adb path $adbPath")
+    }
+
+    private fun isWindows(): Boolean {
+        return System.getProperty("os.name")?.startsWith("win", true) == true
     }
 
     fun dispatchToMultiDevices() {
@@ -145,7 +148,7 @@ class SongAction(
         "shell",
         "sh",
         "-c",
-        "\'rm $tmp\'"
+        "'rm $tmp'"
     )
 
     private fun getDevices(): List<String> {
@@ -156,22 +159,6 @@ class SongAction(
             it.split(Pattern.compile("\\s+")).first()
         }
         return devices
-    }
-
-    private fun commandResult(label: String, commands: Array<String?>): String {
-        val getDevicesCommand = Runtime.getRuntime().exec(commands)
-        val result = getDevicesCommand.waitFor()
-        val inputContent = getDevicesCommand.inputStream.bufferedReader().use {
-            it.readText().trim()
-        }
-        val errorContent = getDevicesCommand.errorStream.bufferedReader().use {
-            it.readText().trim()
-        }
-        if (result != PROCESS_OK) {
-            logger.error("$label command result $result input: $inputContent error: $errorContent")
-        }
-        getDevicesCommand.destroy()
-        return inputContent
     }
 
     private fun copyToInternal(
@@ -188,7 +175,7 @@ class SongAction(
         packageTarget,
         "sh",
         "-c",
-        "\'/bin/cp -f $tmp $output\'"
+        "'/bin/cp -f $tmp $output'"
     )
 
     private fun mkdirsInInternal(
@@ -204,7 +191,7 @@ class SongAction(
         packageTarget,
         "sh",
         "-c",
-        "\'mkdir -p $outputPath\'"
+        "'mkdir -p $outputPath'"
     )
 
     /**
@@ -220,6 +207,22 @@ class SongAction(
             logger.warn("$label command ${commands.joinToString()} result: $processResult input: $readText error: $error")
         pushCommand.destroy()
         return processResult
+    }
+
+    private fun commandResult(label: String, commands: Array<String?>): String {
+        val getDevicesCommand = Runtime.getRuntime().exec(commands)
+        val result = getDevicesCommand.waitFor()
+        val inputContent = getDevicesCommand.inputStream.bufferedReader().use {
+            it.readText().trim()
+        }
+        val errorContent = getDevicesCommand.errorStream.bufferedReader().use {
+            it.readText().trim()
+        }
+        if (result != PROCESS_OK) {
+            logger.error("$label command result $result input: $inputContent error: $errorContent")
+        }
+        getDevicesCommand.destroy()
+        return inputContent
     }
 }
 
