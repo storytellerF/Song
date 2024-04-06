@@ -115,14 +115,19 @@ class SongAction(
     }
 
     private fun checkPackageExists(packageName: String, deviceSerial: String): Boolean {
-        val result = commandResult(
-            "Check $packageName exists", arrayOf(
-                "/bin/sh",
-                "-c",
-                """adb -s $deviceSerial shell pm list package | grep  "$packageName$""""
+        if (isWindows()) {
+            logger.warn("windows 上执行此命令会导致挂起。直接跳过")
+            return false
+        } else {
+            val result = commandResult(
+                "Check $packageName exists", arrayOf(
+                    "/bin/sh",
+                    "-c",
+                    """$adb -s $deviceSerial shell pm list package | grep  "$packageName$""""
+                )
             )
-        )
-        return result.isNotEmpty()
+            return result.isNotEmpty()
+        }
     }
 
     private fun pushSimple(
