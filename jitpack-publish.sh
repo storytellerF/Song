@@ -1,0 +1,1 @@
+./gradlew clean -xtest assemble :plugin:publishToMavenLocal

@@ -6,11 +6,9 @@ plugins {
     `kotlin-dsl`
 }
 
-group = "com.storyteller_f.song"
-version = System.getenv().let {
-    if (it["JITPACK"] == null) "2.1" else it["VERSION"]!!
-}
-
+val env: MutableMap<String, String> = System.getenv()
+group = group.takeIf { it.toString().contains(".") } ?: env["GROUP"] ?: "com.storyteller_f.song"
+version = version.takeIf { it != "unspecified" } ?: env["VERSION"] ?: "0.0.1-local"
 
 repositories {
     mavenCentral()

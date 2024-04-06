@@ -1,4 +1,4 @@
 jdk:
   - openjdk11
 install:
-  - ./gradlew clean -xtest assemble :plugin:publishToMavenLocal
+  - sh jitpack-publish.sh

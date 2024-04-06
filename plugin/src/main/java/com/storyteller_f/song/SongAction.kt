@@ -4,6 +4,7 @@ import org.slf4j.Logger
 import org.slf4j.helpers.NOPLogger
 import java.io.File
 import java.util.regex.Pattern
+import kotlin.math.log
 
 private const val PROCESS_OK = 0
 
@@ -46,7 +47,13 @@ class SongAction(
             return
         }
 
+        logger.info("adb path is: $adb")
+
         val devices = getDevices()
+        if (devices.isEmpty()) {
+            logger.warn("No connected devices. Skip.")
+            return
+        }
         transferFiles.filter { src ->
             if (src.exists()) true
             else {
