@@ -4,6 +4,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Optional
 import java.io.File
 
 interface SongExtension {
@@ -25,6 +26,9 @@ class Song : Plugin<Project> {
             pathTargets = songExtension.paths.orNull
             packageTargets = songExtension.packages.orNull
             outputName = songExtension.outputName.orNull
+            outputs.upToDateWhen {
+                false
+            }
         }
     }
     companion object {

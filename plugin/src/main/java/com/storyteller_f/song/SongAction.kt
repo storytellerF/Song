@@ -3,6 +3,7 @@ package com.storyteller_f.song
 import org.slf4j.Logger
 import org.slf4j.helpers.NOPLogger
 import java.io.File
+import java.io.Serializable
 import java.util.regex.Pattern
 
 private const val PROCESS_OK = 0
@@ -10,23 +11,30 @@ private const val PROCESS_OK = 0
 /**
  * @param path 相对路径
  */
-data class PackageSite(val packageName: String, val path: String)
+data class PackageSite(val packageName: String, val path: String) : Serializable
 
 /**
- * @param adbPath 如果为null 或者空字符串会通过ANDROID_HOME获取adb 的路径
+ * adbPath 最好添加到环境变量中，这样免去不同平台的适配
+ * @param adbPath 如果为null 或者空字符串会通过ANDROID_HOME获取adb 的路径。不要带有exe 后缀，即便是在windows 环境中，内部会自动处理
  * @param pathTargets 绝对路径
  */
 class SongAction(
-    private val adbPath: String? = null,
+    adbPath: String? = null,
     private val outputName: String? = null,
     private val transferFiles: List<File> = listOf(),
     private val packageTargets: List<PackageSite> = listOf(),
     private val pathTargets: List<String> = listOf(),
     private val logger: Logger = NOPLogger.NOP_LOGGER
 ) {
+    private val safeAdbPath = if (adbPath != null && isWindows() && !adbPath.endsWith(".exe")) {
+        "${adbPath}.exe"
+    } else {
+        adbPath
+    }
     private val adb = when {
-        adbPath == "adb" -> "adb"
-        adbPath == null || adbPath == "" -> {
+        safeAdbPath == "adb" -> "adb"
+        safeAdbPath == "adb.exe" -> "adb.exe"
+        safeAdbPath.isNullOrBlank() -> {
             val androidHome: String? = System.getenv("ANDROID_HOME")
             if (androidHome.isNullOrEmpty()) {
                 null
@@ -36,8 +44,8 @@ class SongAction(
             }
         }
 
-        File(adbPath).exists() -> adbPath
-        else -> throw Exception("invalid adb path $adbPath")
+        File(safeAdbPath).exists() -> safeAdbPath
+        else -> throw Exception("invalid adb path $adbPath, $safeAdbPath")
     }
 
     private fun isWindows(): Boolean {
@@ -46,59 +54,66 @@ class SongAction(
 
     fun dispatchToMultiDevices() {
         if (adb == null) {
-            logger.warn("adbPath $adbPath not exists. Skip!")
+            logger.warn("adbPath $safeAdbPath not exists. Skip!")
             return
         }
 
-        logger.info("adb path is: $adb")
-
-        val devices = getDevices()
+        val c = 1
+        logger.info("${getSpace(c)}adb path is: $adb")
+        val devices = getDevices(c)
         if (devices.isEmpty()) {
-            logger.warn("No connected devices. Skip.")
+            logger.warn("${getSpace(c)}No connected devices. Skip.")
             return
         }
         transferFiles.filter { src ->
             if (src.exists()) true
             else {
-                logger.warn("$src not exists")
+                logger.warn("${getSpace(c)}$src not exists")
                 false
             }
         }.forEach {
-            val src = it.absolutePath
-            val name = outputName ?: it.name
-            devices.forEach { deviceSerialName ->
-                logger.info("Dispatch to $deviceSerialName")
-                pathTargets.forEach { pathTarget ->
-                    logger.info("\tDispatch to [pathTarget]: $pathTarget")
-                    command("Push to regular path", pushSimple(deviceSerialName, src, "$pathTarget/$name"))
-                }
-                pushToInternal(deviceSerialName, src, name)
-            }
+            dispatch(it, devices, c)
         }
 
     }
 
-    private fun pushToInternal(deviceSerialName: String, src: String, name: String) {
+    @Suppress("SameParameterValue")
+    private fun dispatch(it: File, devices: List<String>, c: Int) {
+        val src = it.absolutePath
+        val name = outputName ?: it.name
+        devices.forEach { deviceSerialName ->
+            logger.info("${getSpace(c)}Dispatch to $deviceSerialName")
+            pathTargets.forEach { pathTarget ->
+                logger.info("${getSpace(c + 1)}Dispatch to [pathTarget]: $pathTarget")
+                command("Push to regular path", pushSimple(deviceSerialName, src, "$pathTarget/$name"), c + 1)
+            }
+            pushToInternal(deviceSerialName, src, name, c + 1)
+        }
+    }
+
+    private fun pushToInternal(deviceSerialName: String, src: String, name: String, c: Int) {
         val tmp = "/data/local/tmp/${name}"
-        if (command("Push to temp", pushSimple(deviceSerialName, src, tmp)) != PROCESS_OK) {
+        if (command("${getSpace(c)}Push to temp", pushSimple(deviceSerialName, src, tmp), c) != PROCESS_OK) {
             return
         }
         packageTargets.forEach { (packageName, subPath) ->
             val outputPath = "/data/data/$packageName/$subPath"
-            logger.info("\tDispatch to [packageTarget]: $outputPath")
+            logger.info("${getSpace(c)}Dispatch to [packageTarget]: $outputPath")
             val output = "$outputPath/${outputName}"
-            if (checkPackageExists(packageName, deviceSerialName)) {
+            if (checkPackageExists(packageName, deviceSerialName, c)) {
                 sequence {
                     yield(
                         command(
                             "Mkdirs app internal package",
-                            mkdirsInInternal(deviceSerialName, packageName, outputPath)
+                            mkdirsInInternal(deviceSerialName, packageName, outputPath),
+                            c + 1
                         )
                     )
                     yield(
                         command(
                             "Push to app internal package",
-                            copyToInternal(deviceSerialName, packageName, tmp, output)
+                            copyToInternal(deviceSerialName, packageName, tmp, output),
+                            c + 1
                         )
                     )
                 }.any {
@@ -106,27 +121,39 @@ class SongAction(
                     it != PROCESS_OK
                 }
             } else {
-                logger.info("$packageName not exists")
+                logger.info("${getSpace(c + 1)}$packageName not exists, Skip!")
             }
 
 
         }
-        command("Remove temp", removeTemp(deviceSerialName, tmp))
+        command("Remove temp", removeTemp(deviceSerialName, tmp), c)
     }
 
-    private fun checkPackageExists(packageName: String, deviceSerial: String): Boolean {
+    /**
+     * @return true 代表存在
+     */
+    private fun checkPackageExists(packageName: String, deviceSerial: String, c: Int): Boolean {
         if (isWindows()) {
-            logger.warn("windows 上执行此命令会导致挂起。直接跳过")
-            return false
+            val commandResult =
+                asyncResult(
+                    "checkPackageExists",
+                    arrayOf(
+                        "powershell.exe",
+                        "-c",
+                        """$adb -s $deviceSerial shell pm list package | Select-String "$packageName$""""
+                    ),
+                    c
+                )
+            return commandResult.contains(packageName)
         } else {
-            val result = commandResult(
+            return commandResult(
                 "Check $packageName exists", arrayOf(
                     "/bin/sh",
                     "-c",
                     """$adb -s $deviceSerial shell pm list package | grep  "$packageName$""""
-                )
-            )
-            return result.isNotEmpty()
+                ),
+                c
+            ).isNotEmpty()
         }
     }
 
@@ -156,14 +183,21 @@ class SongAction(
         "'rm $tmp'"
     )
 
-    private fun getDevices(): List<String> {
-        val readText = commandResult("Get Devices", arrayOf(adb, "devices"))
-        val devices = readText.split("\n").let {
+    @Suppress("SameParameterValue")
+    private fun getDevices(c: Int): List<String> {
+        val text = commandResult("Get Devices", arrayOf(adb!!, "devices"), c)
+        return text.split("\n").let {
             it.subList(1, it.size)
-        }.map {
-            it.split(Pattern.compile("\\s+")).first()
+        }.mapNotNull {
+            val split = it.split(Pattern.compile("\\s+"))
+            val device = split.first()
+            if (split[1] == "offline") {
+                logger.info("${getSpace(c)}Skip device $device, because of offline")
+                null
+            } else {
+                device
+            }
         }
-        return devices
     }
 
     private fun copyToInternal(
@@ -203,31 +237,102 @@ class SongAction(
      * 如果执行失败，会显示命令输出的内容
      * @return 返回命令结果
      */
-    private fun command(label: String, commands: Array<String>): Int {
+    private fun command(label: String, commands: Array<String>, c: Int): Int {
         val pushCommand = Runtime.getRuntime().exec(commands)
         val processResult = pushCommand.waitFor()
-        val readText = pushCommand.inputStream.reader().readText()
-        val error = pushCommand.errorStream.reader().readText()
+        val inputText = pushCommand.inputStream.reader().readText()
+        val errorText = pushCommand.errorStream.reader().readText()
         if (processResult != PROCESS_OK)
-            logger.warn("$label command ${commands.joinToString()} result: $processResult input: $readText error: $error")
+            logCommandError(label, commands, processResult, inputText, errorText, c)
         pushCommand.destroy()
         return processResult
     }
 
-    private fun commandResult(label: String, commands: Array<String?>): String {
-        val getDevicesCommand = Runtime.getRuntime().exec(commands)
-        val result = getDevicesCommand.waitFor()
-        val inputContent = getDevicesCommand.inputStream.bufferedReader().use {
+    private fun commandResult(label: String, commands: Array<String>, c: Int): String {
+        val process = Runtime.getRuntime().exec(commands)
+        val result = process.waitFor()
+        val inputContent = process.inputStream.bufferedReader().use {
             it.readText().trim()
         }
-        val errorContent = getDevicesCommand.errorStream.bufferedReader().use {
+        val errorContent = process.errorStream.bufferedReader().use {
             it.readText().trim()
         }
         if (result != PROCESS_OK) {
-            logger.error("$label command result $result input: $inputContent error: $errorContent")
+            logCommandError(label, commands, result, inputContent, errorContent, c)
         }
-        getDevicesCommand.destroy()
+        process.destroy()
         return inputContent
+    }
+
+    private fun logCommandError(
+        label: String,
+        commands: Array<String>,
+        result: Int,
+        inputContent: String,
+        errorContent: String,
+        c: Int
+    ) {
+        logger.error(
+            buildString {
+                append("${getSpace(c)}$label\n")
+                append("${getSpace(c + 1)}command: ${commands.joinToString()}\n")
+                append("${getSpace(c + 1)}result code: $result")
+                if (inputContent.isNotBlank())
+                    append("\n${getSpace(c + 1)}input: ${inputContent.trim()}")
+                if (errorContent.isNotBlank())
+                    append("\n${getSpace(c + 1)}error: ${errorContent.trim()}")
+            }
+        )
+    }
+
+    @Suppress("SameParameterValue")
+    private fun asyncResult(label: String, commands: Array<String>, c: Int): String {
+        val process = Runtime.getRuntime().exec(commands)
+        val inputBuffer = StringBuilder()
+        val errorBuffer = StringBuilder()
+        val i = process.inputStream.bufferedReader()
+        val e = process.errorStream.bufferedReader()
+        val thread = Thread {
+            while (true) {
+                if (process.isAlive) {
+                    inputBuffer.appendLine(i.readLine())
+                } else {
+                    inputBuffer.appendLine(i.readText())
+                    break
+                }
+            }
+        }
+        thread.start()
+        val thread1 = Thread {
+            while (true) {
+                if (process.isAlive) {
+                    errorBuffer.appendLine(e.readLine())
+                } else {
+                    errorBuffer.appendLine(e.readText())
+                    break
+                }
+            }
+        }
+        thread1.start()
+        thread.join()
+        thread1.join()
+        val result = process.waitFor()
+        val inputContent = inputBuffer.toString()
+        val errorContent = errorBuffer.toString()
+
+        if (result != PROCESS_OK) {
+            logCommandError(label, commands, result, inputContent, errorContent, c)
+        }
+        process.destroy()
+        i.close()
+        e.close()
+        return inputContent
+    }
+
+    private fun getSpace(count: Int): String {
+        return MutableList(count) {
+            "\t"
+        }.joinToString("")
     }
 }
 

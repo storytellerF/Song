@@ -42,7 +42,6 @@ val file = "$userHome/AndroidStudioProjects/GiantExplorer/plugins/yue/app/build/
 
 song {
     transfers.set(listOf(file))
-    adb.set("$userHome/Library/Android/sdk/platform-tools/adb")
     paths.set(listOf("/sdcard/Download/GiantExplorer/plugins"))
     packages.set(listOf(PackageSite("com.storyteller_f.giant_explorer.debug", "files/plugins")))
     outputName.set("yue.apk")
