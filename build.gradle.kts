@@ -2,7 +2,7 @@ import com.storyteller_f.song.PackageSite
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.8.21"
+    kotlin("jvm") version "1.9.23"
     id("com.storyteller_f.song")
     application
 }
